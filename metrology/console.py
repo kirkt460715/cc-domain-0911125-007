@@ -190,6 +190,21 @@ def parser():
     fit.add_argument("file")
     fit.add_argument("--residual-limit")
     fit.add_argument("--leave-one-out", action="store_true")
+    study = commands.add_parser(
+        "concentration-study",
+        help="fit a lognormal concentration study with left-censored records",
+    )
+    study.add_argument("file")
+    study.add_argument("--save")
+    compare = commands.add_parser(
+        "concentration-compare",
+        help="compare instrument periods under a common detection limit",
+    )
+    compare.add_argument("file")
+    verify_study = commands.add_parser(
+        "verify-study", help="verify a frozen concentration study report"
+    )
+    verify_study.add_argument("file")
     commands.add_parser("check", help="verify stored data and audit chain")
     commands.add_parser("overview", help="count stored business objects")
     return root
@@ -207,6 +222,21 @@ def execute(args):
             if args.leave_one_out
             else fit_linear(data, residual_limit=args.residual_limit)
         )
+    if args.command == "concentration-study":
+        from .studies import run_concentration_study, save_study
+
+        report = run_concentration_study(document(args.file))
+        if args.save:
+            report["saved"] = save_study(report, args.save)
+        return report
+    if args.command == "concentration-compare":
+        from .studies import compare_instrument_periods
+
+        return compare_instrument_periods(document(args.file))
+    if args.command == "verify-study":
+        from .studies import verify_study
+
+        return verify_study(args.file)
     if args.command == "preview":
         mapping = Mapping.parse(document(args.mapping)) if args.mapping else None
         options = {"delimiter": args.delimiter} if args.format == "csv" else {}
